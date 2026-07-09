@@ -1,0 +1,48 @@
+name: Update README stats
+
+on:
+  schedule:
+    - cron: "30 */12 * * *"   # toutes les 12h
+  workflow_dispatch:           # bouton "Run workflow" manuel
+  push:
+    branches: [ main ]
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Configure git identity (nécessaire pour cloner en HTTPS avec token)
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Generate stats SVGs
+        env:
+          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: python today.py
+
+      - name: Commit and push changes
+        run: |
+          git add dark_mode.svg light_mode.svg cache/
+          if git diff --cached --quiet; then
+            echo "Rien à committer."
+          else
+            git commit -m "Update README stats [auto]"
+            git push
+          fi
